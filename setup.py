@@ -9,5 +9,5 @@ setup(
     author='diego aliaga at lfa ',
     author_email='',
     description='sync local mysql db to server db ',
-    requires=['sqlalchemy']
+    requires=['sqlalchemy', 'pandas']
 )
