@@ -5,10 +5,9 @@
 import time
 from db_sync.Database import Database
 import my_logger
-
+import logging
 logger = my_logger.get_logger(name=__name__, level='DEBUG')
 
-logger.debug('start dbsync', )
 
 
 class DBSync(object):
@@ -16,9 +15,15 @@ class DBSync(object):
         self.source = {}
         self.backup = {}
         self.interval_sync_seconds = 300 #default but can be overriden
+        self.logging_level = "DEBUG"
 
         for key in parameters.keys():
             setattr(self, key, parameters[key])
+
+
+
+        logging.disable(logging.getLevelName(self.logging_level)-1)
+
 
         while True:
             try:
@@ -37,7 +42,7 @@ class DBSync(object):
                 logger.error('the error was: %s', e)
 
 
-            logger.debug('going to sleep for %s', self.interval_sync_seconds)
+            logger.error('going to sleep for %s', self.interval_sync_seconds)
             time.sleep(self.interval_sync_seconds)
 
 

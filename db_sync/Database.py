@@ -42,7 +42,8 @@ class Database(object):
         self.ip = None
         self.database_name = None
         self.time_column_name = None
-        self.max_rows_to_update = None
+        self.max_rows_to_update = 100
+        self.time_int_or_datetime = 'datetime'
 
         for key in dic.keys():
             setattr(self, key, dic[key])
@@ -56,7 +57,6 @@ class Database(object):
         )
 
         self.eng = sa.create_engine(self.url)
-
 
         if src_table_name is not None:
             if not functions.check_table_exists(self.table_name, self.eng):
@@ -84,7 +84,12 @@ class Database(object):
         query = query.first()
         # if there is no result then last datetime is None
         if query is None:
-            query = (datetime.datetime(1970, 1, 1, 0, 0, 0),)
+            if self.time_int_or_datetime == 'datetime':
+                logger.debug('assuming time column is datetime %s', )
+                query = (datetime.datetime(1970, 1, 1, 0, 0, 0),)
+            if self.time_int_or_datetime == 'int':
+                logger.debug('assuming time column is int %s', )
+                query = (0,)
         self.last_datetime = query[0]
 
     def update_from_source(self, source_db):
@@ -98,7 +103,6 @@ class Database(object):
         self.set_last_datetime()
         source_db.set_last_datetime()
 
-
     def get_values_greater_than(self, time):
         query = self.session.query(self.table)
         query = query.order_by(self.time_column.asc())
@@ -109,14 +113,14 @@ class Database(object):
                 query.statement,
                 self.session.bind
         )
+        logger.debug('number of items is %s', len(res_dataframe))
         return res_dataframe
 
     def insert_values(self, dataframe):
         logger.debug('startin insert', )
         dataframe.to_sql(
-            name=self.table_name,
-            con=self.eng,
-            if_exists='append',
-            index=False
+                name=self.table_name,
+                con=self.eng,
+                if_exists='append',
+                index=False
         )
-
