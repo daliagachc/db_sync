@@ -16,27 +16,72 @@ class DBSync(object):
         self.source = {}
         self.backup = {}
         self.interval_sync_seconds = 300 #default but can be overriden
+
         for key in parameters.keys():
             setattr(self, key, parameters[key])
 
-        db_source = Database(self.source)
+        while True:
+            try:
+                self.set_databases()
+                try:
+                    self.main_loop()
+                except Exception as e:
+                    logger.error('something happenden in the main loop %s', e)
 
-        db_backup = Database(
+
+            except Exception as e:
+
+                logger.error('could not set databases. trying again in %s',
+                            self.interval_sync_seconds
+                            )
+                logger.error('the error was: %s', e)
+
+
+            logger.debug('going to sleep for %s', self.interval_sync_seconds)
+            time.sleep(self.interval_sync_seconds)
+
+
+
+    def set_databases(self):
+        logger.debug('setting database %s',)
+        self.db_source = Database(self.source)
+
+        self.db_backup = Database(
                 self.backup,
-                src_table_name=db_source.table_name,
-                src_eng=db_source.eng
+                src_table_name=self.db_source.table_name,
+                src_eng=self.db_source.eng
         )
 
+    def loop_update(self):
+        logger.debug('starting loop update %s',)
+        try:
+            while (self.db_source.last_datetime >
+                       self.db_backup.last_datetime):
+
+                self.db_backup.update_from_source(
+                        self.db_source
+                )
+
+                logger.debug('last time source is  %s',
+                             self.db_source.last_datetime)
+                logger.debug('last time backup is %s',
+                             self.db_backup.last_datetime)
+        except Exception as e:
+            logger.error('something happened while updating the values. The error is %s', e)
+
+
+    def main_loop(self):
+        logger.debug('starting main loop %s',)
         while True:
-            db_backup.session.commit()
-            db_source.session.commit()
-            db_backup.set_last_datetime()
-            db_source.set_last_datetime()
-            logger.debug('last time source is  %s', db_source.last_datetime)
-            logger.debug('last time backup is %s', db_backup.last_datetime)
-            while db_source.last_datetime > db_backup.last_datetime:
-                db_backup.update_from_source(db_source)
-                logger.debug('last time source is  %s', db_source.last_datetime)
-                logger.debug('last time backup is %s', db_backup.last_datetime)
-            logger.debug('sleeping for %s seconds', self.interval_sync_seconds)
+            self.db_backup.session.commit()
+            self.db_source.session.commit()
+            self.db_backup.set_last_datetime()
+            self.db_source.set_last_datetime()
+            logger.debug('last time source is  %s', self.db_source.last_datetime)
+            logger.debug('last time backup is %s', self.db_backup.last_datetime)
+
+            self.loop_update()
+
+            logger.debug('sleeping for %s seconds',
+                         self.interval_sync_seconds)
             time.sleep(self.interval_sync_seconds)
